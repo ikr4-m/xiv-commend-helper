@@ -18,6 +18,7 @@ namespace CommendMe
         public string Name => "CommendMe";
 
         private ServiceProvider _service;
+        private CommandList _cmdList = new();
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -29,16 +30,11 @@ namespace CommendMe
             var config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             config.Initialize(pluginInterface);
 
-            // Command handler
-            commandManager.AddHandler("/helloworld", new CommandInfo(HelloWorldCommand)
-            {
-                HelpMessage = "Hello world!"
-            });
-
             // Register service
             var services = new ServiceCollection()
                 .AddSingleton<DalamudPluginInterface>(pluginInterface)
                 .AddSingleton<CommandManager>(commandManager)
+                .AddSingleton<CommandList>(_cmdList)
                 .AddSingleton<ChatGui>(chatGui)
                 .AddSingleton<ClientState>(client)
                 .AddSingleton<Configuration>(config)
@@ -59,15 +55,11 @@ namespace CommendMe
             _service.GetRequiredService<DalamudPluginInterface>().UiBuilder.OpenConfigUi += DrawConfigUI;
         }
 
-        private void HelloWorldCommand(string command, string argString)
-        {
-            _service.GetRequiredService<ChatGui>().Print("Hello world!");
-        }
-
         public void Dispose()
         {
             _service.GetRequiredService<WindowSystem>().RemoveAllWindows();
-            _service.GetRequiredService<CommandManager>().RemoveHandler("/helloworld");
+            foreach (var cmd in _service.GetRequiredService<CommandList>().List)
+                _service.GetRequiredService<CommandManager>().RemoveHandler(cmd);
         }
 
         private void DrawUI() => _service.GetRequiredService<WindowSystem>().Draw();
