@@ -4,6 +4,7 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
 using Dalamud.Game.Gui;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CommendMe
 {
@@ -11,12 +12,7 @@ namespace CommendMe
     {
         public string Name => "CommendMe";
 
-        public WindowSystem WindowSystem = new("CommendMe");
-        public DalamudPluginInterface PluginInterface { get; init; }
-        public CommandManager CommandManager { get; init; }
-        public ChatGui ChatGui { get; init; }
-        public Configuration Configuration { get; init; }
-        public ClientState Client { get; init; }
+        private ServiceProvider _service;
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -24,26 +20,43 @@ namespace CommendMe
             [RequiredVersion("1.0")] ChatGui chatGui,
             [RequiredVersion("1.0")] ClientState client)
         {
-            PluginInterface = pluginInterface;
-            CommandManager = commandManager;
-            ChatGui = chatGui;
-            Client = client;
-            
             // Register configuration
-            Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-            Configuration.Initialize(this.PluginInterface);
+            var config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+            config.Initialize(pluginInterface);
 
             // Draw window
-            PluginInterface.UiBuilder.Draw += DrawUI;
-            //PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
+            pluginInterface.UiBuilder.Draw += DrawUI;
+            //_service.GetRequiredService<DalamudPluginInterface>().OpenConfigUi += DrawConfigUI;
+
+            // Command handler
+            commandManager.AddHandler("/helloworld", new CommandInfo(HelloWorldCommand)
+            {
+                HelpMessage = "Hello world!"
+            });
+
+            // Register service
+            var services = new ServiceCollection()
+                .AddSingleton<DalamudPluginInterface>(pluginInterface)
+                .AddSingleton<CommandManager>(commandManager)
+                .AddSingleton<ChatGui>(chatGui)
+                .AddSingleton<ClientState>(client)
+                .AddSingleton<Configuration>(config)
+                .AddSingleton<WindowSystem>(new WindowSystem("CommendMe"));
+            _service = services.BuildServiceProvider();
+        }
+
+        private void HelloWorldCommand(string command, string argString)
+        {
+            _service.GetRequiredService<ChatGui>().Print("Hello world!");
         }
 
         public void Dispose()
         {
-            WindowSystem.RemoveAllWindows();
+            _service.GetRequiredService<WindowSystem>().RemoveAllWindows();
+            _service.GetRequiredService<CommandManager>().RemoveHandler("/helloworld");
         }
 
-        private void DrawUI() => WindowSystem.Draw();
+        private void DrawUI() => _service.GetRequiredService<WindowSystem>().Draw();
 
         //public void DrawConfigUI() => this.WindowSystem.OpenWindow(typeof(ConfigWindow));
     }
