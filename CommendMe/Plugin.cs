@@ -1,3 +1,8 @@
+using System.Reflection;
+using System.Linq;
+using CommendMe.DataStructure;
+using CommendMe.Extension;
+using CommendMe.Windows;
 using Dalamud.Game.Command;
 using Dalamud.Game.ClientState;
 using Dalamud.IoC;
@@ -24,10 +29,6 @@ namespace CommendMe
             var config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             config.Initialize(pluginInterface);
 
-            // Draw window
-            pluginInterface.UiBuilder.Draw += DrawUI;
-            //_service.GetRequiredService<DalamudPluginInterface>().OpenConfigUi += DrawConfigUI;
-
             // Command handler
             commandManager.AddHandler("/helloworld", new CommandInfo(HelloWorldCommand)
             {
@@ -43,6 +44,19 @@ namespace CommendMe
                 .AddSingleton<Configuration>(config)
                 .AddSingleton<WindowSystem>(new WindowSystem("CommendMe"));
             _service = services.BuildServiceProvider();
+            foreach (var service in services.ToArray()) _service.GetRequiredService(service.ServiceType);
+
+            // Register all self-build services
+            var listServices = Assembly.GetExecutingAssembly().GetAssociatedNamespace<BaseService>("CommendMe.Services");
+            foreach (var listService in listServices)
+            {
+                var instance = (BaseService)ActivatorUtilities.CreateInstance(_service, listService);
+                instance.Execute();
+            }
+
+            // Register and draw window
+            _service.GetRequiredService<DalamudPluginInterface>().UiBuilder.Draw += DrawUI;
+            _service.GetRequiredService<DalamudPluginInterface>().UiBuilder.OpenConfigUi += DrawConfigUI;
         }
 
         private void HelloWorldCommand(string command, string argString)
@@ -58,6 +72,6 @@ namespace CommendMe
 
         private void DrawUI() => _service.GetRequiredService<WindowSystem>().Draw();
 
-        //public void DrawConfigUI() => this.WindowSystem.OpenWindow(typeof(ConfigWindow));
+        public void DrawConfigUI() => _service.GetRequiredService<WindowSystem>().OpenWindow<ConfigWindow>();
     }
 }
