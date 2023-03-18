@@ -19,6 +19,7 @@ namespace CommendMe
 
         private ServiceProvider _service;
         private CommandList _cmdList = new();
+        private EventList _evtList = new();
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -35,6 +36,7 @@ namespace CommendMe
                 .AddSingleton<DalamudPluginInterface>(pluginInterface)
                 .AddSingleton<CommandManager>(commandManager)
                 .AddSingleton<CommandList>(_cmdList)
+                .AddSingleton<EventList>(_evtList)
                 .AddSingleton<ChatGui>(chatGui)
                 .AddSingleton<ClientState>(client)
                 .AddSingleton<Configuration>(config)
@@ -58,6 +60,7 @@ namespace CommendMe
         public void Dispose()
         {
             _service.GetRequiredService<WindowSystem>().RemoveAllWindows();
+            _service.GetRequiredService<EventList>().Dispose();
             foreach (var cmd in _service.GetRequiredService<CommandList>().List)
                 _service.GetRequiredService<CommandManager>().RemoveHandler(cmd);
         }

@@ -12,7 +12,7 @@ namespace CommendMe.Services
         private WindowSystem _window;
         private IServiceProvider _service;
 
-        public RegisterWindowService(IServiceProvider service, WindowSystem windowSystem, CommandList cmdList)
+        public RegisterWindowService(IServiceProvider service, WindowSystem windowSystem)
         {
             _window = windowSystem;
             _service = service;
